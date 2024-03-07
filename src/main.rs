@@ -1,5 +1,6 @@
 use std::{
-    fs::File,
+    collections::HashMap,
+    fs::{self, File},
     io::{self, Write},
     process::{Command, Output},
 };
@@ -30,23 +31,38 @@ pub struct QppMessage {
 }
 
 async fn read_output(source: &str, message: &QppMessage) -> Value {
-    match message.backend {
-        Backend::SV => {
-            let mut sv = data::StateVector { bases: Vec::new() };
-            data::read_state(&mut sv, &format!("/tmp/{}", source)).await;
-            data::print_state(&sv, &sv.probabilities()).await
+    if 0 == message.shots {
+        match message.backend {
+            Backend::SV => {
+                let mut sv = data::StateVector { bases: Vec::new() };
+                data::read_state(&mut sv, &format!("/tmp/{}", source)).await;
+                data::print_state(&sv, &sv.probabilities()).await
+            }
+            Backend::DM => {
+                let mut dm = data::DensityMatrix { bases: Vec::new() };
+                data::read_density(&mut dm, &format!("/tmp/{}", source)).await;
+                data::print_density_matrix(&dm, &dm.probabilities()).await
+            }
         }
-        Backend::DM => {
-            let mut dm = data::DensityMatrix { bases: Vec::new() };
-            data::read_density(&mut dm, &format!("/tmp/{}", source)).await;
-            data::print_density_matrix(&dm, &dm.probabilities()).await
-        }
+    } else {
+        let mut stats = data::Statistics {
+            memory: HashMap::new(),
+        };
+        data::read_stats(&mut stats, &format!("/tmp/{}", source)).await;
+        data::print_stats(&stats).await
     }
 }
 
 async fn save_source_file(code: &str, source: &str) -> io::Result<()> {
     let mut file = File::create(source)?;
     file.write_all(code.as_bytes())
+}
+
+async fn remove_source_target_files(source: &str) -> io::Result<()> {
+    fs::remove_file(&format!("/tmp/{}.qasm", source))?;
+    fs::remove_file(&format!("/tmp/{}.stats", source))?;
+    fs::remove_file(&format!("/tmp/{}.state", source))?;
+    Ok(())
 }
 
 async fn run_program(source: &str, message: &QppMessage) -> io::Result<Output> {
@@ -69,10 +85,16 @@ pub async fn consume_task(Form(message): Form<QppMessage>) -> (StatusCode, Json<
     let source = uuid::Uuid::new_v4().to_string();
     match save_source_file(&message.qasm, &format!("/tmp/{}.qasm", source)).await {
         Ok(_) => match run_program(&source, &message).await {
-            Ok(exec_output) if exec_output.status.code() == Some(0) => (
-                StatusCode::OK,
-                Json(json!(read_output(&source, &message).await)),
-            ),
+            Ok(exec_output) if exec_output.status.code() == Some(0) => {
+                let ret = read_output(&source, &message).await;
+                match remove_source_target_files(&source).await {
+                    Ok(_) => {}
+                    Err(err) => {
+                        println!("{}", err);
+                    }
+                };
+                (StatusCode::OK, Json(json!(ret)))
+            }
             Ok(exec_output) => match exec_output.status.code() {
                 Some(status) => (
                     StatusCode::INTERNAL_SERVER_ERROR,

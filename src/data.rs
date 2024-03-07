@@ -1,4 +1,4 @@
-use std::fs;
+use std::{collections::HashMap, fs};
 
 use num::complex::ComplexFloat;
 use serde_json::{json, Value};
@@ -11,6 +11,10 @@ pub struct StateVector {
 
 pub struct DensityMatrix {
     pub bases: Vec<Vec<Complex>>,
+}
+
+pub struct Statistics {
+    pub memory: HashMap<String, usize>,
 }
 
 impl StateVector {
@@ -77,7 +81,8 @@ pub async fn read_density(dm: &mut DensityMatrix, source: &str) {
             .split(" ")
             .filter_map(|s| s.parse::<f32>().ok())
             .collect::<Vec<_>>();
-        dm.bases.push(row.chunks(2).map(|c| Complex::new(c[0], c[1])).collect());
+        dm.bases
+            .push(row.chunks(2).map(|c| Complex::new(c[0], c[1])).collect());
     }
 }
 
@@ -97,5 +102,37 @@ pub async fn print_density_matrix(density_matrix: &DensityMatrix, probabilities:
 
     json!({
         "DensityMatrix": json
+    })
+}
+
+pub async fn read_stats(stats: &mut Statistics, source: &str) {
+    for line in fs::read_to_string(source.to_string() + ".stats")
+        .unwrap()
+        .lines()
+    {
+        let complex = line
+            .split(" ")
+            .filter_map(|s| s.parse::<usize>().ok())
+            .collect::<Vec<_>>();
+
+        stats.memory.insert(
+            complex[..complex.len() - 1]
+                .iter()
+                .map(|c| c.to_string())
+                .collect::<String>(),
+            complex.last().unwrap().clone(),
+        );
+    }
+}
+
+pub async fn print_stats(stats: &Statistics) -> Value {
+    let mut json = json!({});
+
+    stats.memory.iter().for_each(|(key, value)| {
+        json[key] = json!(value);
+    });
+
+    json!({
+        "Memory": json
     })
 }
