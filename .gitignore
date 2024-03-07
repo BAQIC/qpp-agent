@@ -37,3 +37,11 @@
 /target
 
 build/
+install/
+
+.cache
+
+Cargo.lock
+
+*.stats
+*.state

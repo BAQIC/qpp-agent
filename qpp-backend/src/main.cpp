@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
         .default_value("./example/bell.qasm")
         .help("OpenQASM file paht");
     program.add_argument("--shots", "-s")
-        .default_value((unsigned int)1)
+        .default_value((unsigned int)0)
         .help("Simulation shots")
         .scan<'u', unsigned int>();
     program.add_argument("--simulator")
@@ -50,10 +50,11 @@ int main(int argc, char** argv) {
                              ".stats");
     std::ofstream state_file(program.get<std::string>("--output-file") +
                              ".state");
+    auto shots = program.get<unsigned int>("--shots") == 0 ? 1: program.get<unsigned int>("--shots");
 
     if (program.get<std::string>("--simulator") == "sv") {
         qpp::QKetEngine q_sv_engine{qc};
-        q_sv_engine.execute(program.get<unsigned int>("--shots"));
+        q_sv_engine.execute(shots);
         auto stats = q_sv_engine.get_stats().data();
         for (auto& [key, value] : stats) {
             for (auto& data : key) {
@@ -62,11 +63,11 @@ int main(int argc, char** argv) {
             stats_file << value << std::endl;
         }
         for (auto& data : q_sv_engine.get_state()) {
-            state_file << data.real() << " " << data.real() << std::endl;
+            state_file << data.real() << " " << data.imag() << std::endl;
         }
     } else {
         qpp::QDensityEngine q_dm_engine{qc};
-        q_dm_engine.execute(program.get<unsigned int>("--shots"));
+        q_dm_engine.execute(shots);
         auto stats = q_dm_engine.get_stats().data();
         for (auto& [key, value] : stats) {
             for (auto& data : key) {
