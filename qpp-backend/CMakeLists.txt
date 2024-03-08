@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.15)
 project(qpp-agent)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_PREFIX_PATH "/home/lucky/Code/qpp/install")
 
 find_package(qpp REQUIRED)
 include_directories(include)
