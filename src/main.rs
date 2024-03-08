@@ -66,7 +66,7 @@ async fn remove_source_target_files(source: &str) -> io::Result<()> {
 }
 
 async fn run_program(source: &str, message: &QppMessage) -> io::Result<Output> {
-    Command::new("/home/lucky/Code/qpp-agent/qpp-backend/install/bin/qpp-agent")
+    Command::new("qpp-agent")
         .arg("-s")
         .arg(message.shots.to_string())
         .arg("-f")
