@@ -115,10 +115,15 @@ pub async fn read_stats(stats: &mut Statistics, source: &str) {
             .filter_map(|s| s.parse::<usize>().ok())
             .collect::<Vec<_>>();
 
+        // the order of string is big endian, the creg is sorted from the larger end
+        // according to the order of declarations.
         stats.memory.insert(
             complex[..complex.len() - 1]
                 .iter()
                 .map(|c| c.to_string())
+                .collect::<String>()
+                .chars()
+                .rev()
                 .collect::<String>(),
             complex.last().unwrap().clone(),
         );
