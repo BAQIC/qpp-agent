@@ -10,12 +10,12 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.bfsu.edu.cn/g' /etc/apk/repositorie
 WORKDIR /home/sq
 RUN git clone --depth 1 --branch main https://github.com/softwareqinc/qpp
 RUN cd qpp && cmake -B build && cmake --build build --target install \
-    cd .. && rm -rf qpp
+    && cd .. && rm -rf qpp
 
 WORKDIR /home/sq/qpp-agent
 COPY . .
 RUN cd qpp-backend && cmake -B build && cmake --build build --target install \
-    cd .. && rm -rf qpp-backend/build \
+    && cd .. && rm -rf qpp-backend/build \
     && curl https://mirrors.ustc.edu.cn/misc/rustup-install.sh -sSf | sh -s -- -y \
     && cargo build --release && mv target/release/qpp-agent /bin/qpp-agent \
     && cargo clean && rm -rf /root/.cargo && rm -rf /root/.rustup
